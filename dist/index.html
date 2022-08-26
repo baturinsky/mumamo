@@ -1,0 +1,277 @@
+<head>
+  <style>
+    * {
+      margin: 0;
+    }
+
+    html {
+      font-size: calc(min(0.9vw, 1.6vh));
+    }
+
+    body {
+      overflow: hidden;
+      background: repeating-linear-gradient(-45deg,
+          #360 0px 0px,
+          #480 20px 22px,
+          #440 22px 24px,
+          #680 24px 24px,
+          #440 44px 46px,
+          #480 46px 48px);
+    }
+
+    .light {
+      position: absolute;
+      pointer-events: none;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      background: linear-gradient(to bottom, rgba(255, 255, 0, 0.25), rgba(0, 0, 0, 0.4));
+    }
+
+    .lamp {
+      position: absolute;
+      pointer-events: none;
+      top: 0;
+      width: 30rem;
+      height: 30rem;
+      background: radial-gradient(circle at top left, rgba(255, 255, 0, 1), rgba(0, 0, 0, 0) 50%);
+      transform: scaleY(1.5) rotate(45deg);
+    }
+
+    #Table {
+      display: flex;
+      justify-content: center;
+      align-content: center;
+      width: 100%;
+      height: 100%;
+    }
+
+    .slot {
+      border-left: 1px dashed rgba(0, 0, 0, 0.3);
+      border-top: 1px dashed rgba(0, 0, 0, 0.3);
+      display: flex;
+      justify-content: center;
+      align-content: center;
+    }
+
+    .card {
+      border: solid 1px rgba(0, 0, 0, 0.3);
+      box-shadow: 1px 2px 2px rgba(0, 0, 0, 0.5);
+      font-size: 4.2rem;
+      cursor: pointer;
+      padding: 0.5vw;
+      width: 6rem;
+      height: 6rem;      
+    }
+
+    .photo {
+      text-align: center;
+      height: 1.1em;
+      box-shadow: -0.02em -0.04em #000;
+      overflow: hidden;
+      margin: 0.05em;
+    }
+
+    .note {
+      text-align: center;
+      font-family: "Segoe Script";
+      max-width: 7vw;      
+    }
+
+    .note span {
+      font-size: 4pt;
+    }
+
+    .invert {
+      filter: grayscale() brightness(1.5) contrast(0.5) invert() blur(0.5px);
+      border: solid 1px #fff;
+    }
+
+    .green {
+      filter: sepia(1) hue-rotate(45deg) saturate(4) blur(0.5px);
+    }
+
+    .gray {
+      filter: grayscale();
+    }
+
+    .ev, .ev *, .ev .photo, 
+    .do, .do *, .do .photo  {
+      background: none;
+      box-shadow: none;
+      border: none;
+      overflow: visible;      
+    }
+
+    .ev .photo {
+    }
+
+    .ev .overlay{
+      box-shadow: 1px 2px 2px rgba(0, 0, 0, 0.5);
+      background: linear-gradient( 
+        rgba(255,255,255,0.3) 0%,
+        rgba(255,255,255,0.3) 5%,
+        rgba(255,0,0,1) 7%,
+        rgba(255,255,255,0.3) 9%,
+        rgba(255,255,255,0.3) 10%,
+        rgba(255,255,255,1) 12%,
+        rgba(255,255,255,0.3) 14%
+      );
+    }
+
+    .np {
+      padding-top: 0;
+      overflow: hidden;
+    }
+
+    .np .photo {
+      font-size: 1.5rem;
+      filter: saturate(0);
+      display: inline-block;
+    }
+
+    .np .note {
+      font-family: Impact;
+      font-size: 8%;
+      font-stretch:extra-condensed;
+      text-align: justify;
+    }
+
+    .np .note span {
+      font-size: 100%;
+    }
+
+    .nt {
+      padding: 0;
+      border: none;      
+    }    
+
+    .nt .photo{
+      font-size: 6rem;
+      margin: 0 -1rem -0.1 -1rem;
+      text-indent: calc(-0.5em + 40%);
+      box-shadow: 0.02em 0.04em 0.04em #000;
+    }
+
+    .st .photo {
+      display: none;
+    }
+
+    .st .note{
+      font-size: 0.5rem;      
+    }
+
+    .st {
+      overflow: hidden;
+    }
+
+    .nt span{
+      display: inline-block;
+      font-size: 3pt;
+      font-family: Impact;
+      padding:0.2rem;
+      margin: 0.2rem;
+      background: #fff;
+      box-shadow: 0.02em 0.04em 0.04em #000;
+    }
+
+    h1 {
+      text-align: center;      
+      padding: 1pt;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(12, 8rem);
+      grid-template-rows: 8rem 8rem 8rem 8rem 8rem 8rem auto;
+      position: absolute;
+      margin: auto;
+      margin-top: 5rem;
+      border: solid 1rem #420;
+      user-select: none;
+      box-shadow: 3px 6px 3px #000;
+    }
+
+    #Table>.card {
+      position: absolute;
+    }
+
+    #S {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .pin {
+      position: absolute;
+      width: 0px;
+      text-align: center;
+      z-index: 2;
+      font-size: 60%;
+    }
+
+    #map {
+      overflow: hidden;
+      width: 94rem;
+      height: 46.1rem;
+      position: absolute;
+      top: 6rem;
+      font-size: 60rem;
+      line-height: 0.5m;
+      color: #fff;
+      background: #aaa;
+      text-shadow: 1px 2px 2px #000;
+      border: solid 1rem #fff;
+    }
+
+    #map>div {
+      margin-top: -20rem;
+      margin-left: 5rem;
+    }
+
+    .hl {
+      opacity: 0.8;
+    }
+
+    .overlay {
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      width: 100%;
+      height: 100%;      
+      color: #f00;
+      text-align: center;
+      font-size: 130%;
+      font-stretch: extra-expanded;
+    }
+  </style>
+</head>
+<div id=Table>
+  <div id="Map">
+    <div>🗺🗺</div>
+  </div>
+  <div id=Board></div>
+</div>
+<svg id=S fill="none" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id=MyFilter>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+      <feOffset dx=0 dy=2 result="DROPSHADOW"></feOffset>
+      <feMerge>
+        <feMergeNode in="DROPSHADOW"></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+  </defs>
+  <path stroke="red" filter="url(#MyFilter)" stroke-width="2" id="StringsPath" />
+</svg>
+<div id="Pins"></div>
+<div class="light"></div>
+<div class="lamp" style="left:10%"></div>
+<div class="lamp" style="right:10%"></div>
+<script src="./bundle.js"></script>
