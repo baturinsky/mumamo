@@ -20,6 +20,13 @@
           #480 46px 48px);
     }
 
+    input{
+      position: absolute;
+      top:0.5rem;
+      left:0.5rem;
+      background: none;
+    }
+
     .light {
       position: absolute;
       pointer-events: none;
@@ -307,14 +314,24 @@
     }
 
 
+    @keyframes leaves {
+      100% {
+        transform: scale(1.2);
+      }
+    }
+
+    .WD {
+      animation: leaves 0.5s ease-in-out infinite alternate;
+    }
+
     @keyframes blink {
       50% {
-          opacity: 0.5;
-        }    
+        filter: brightness(1.5)
       }
+    }
 
     .hl {
-      animation: blink 0.5s ease-in-out infinite;
+      animation: blink 1.5s ease-in-out infinite;
     }
 
     .overlay {
@@ -329,34 +346,34 @@
       font-stretch: extra-expanded;
     }
 
-    #LevBtns{
+    #LevBtns {
       position: absolute;
       top: 10rem;
       left: 10rem;
     }
 
-    #Talk{
+    #Talk {
       position: absolute;
       bottom: 0;
-      padding: 2rem;            
+      padding: 2rem;
       width: 100%;
       display: flex;
       flex-direction: row;
       font-size: 2rem;
-      font-family: 'Segoe UI', Verdana;      
+      font-family: 'Segoe UI', Verdana;
       width: 90vw;
-      text-align: center;      
+      text-align: center;
     }
 
-    #Char{
+    #Char {
       font-size: 5rem;
     }
 
-    #Talk > *{
+    #Talk>* {
       margin-left: 2rem;
     }
 
-    #Speak{
+    #Speak {
       background: rgba(255, 255, 255, 0.7);
       box-shadow: 1px 2px 2px #000;
       width: 100%;
@@ -364,12 +381,11 @@
       height: 8rem;
     }
 
-    
-    #CTC{
+
+    #CTC {
       margin-top: 0.5rem;
       font-size: 1rem;
     }
-    
   </style>
 </head>
 <div id=Table>
@@ -399,17 +415,17 @@
       <feComponentTransfer result="foo">
         <feFuncA type="discrete" tableValues="0 0.4 0 0.6 0 0.8" />
       </feComponentTransfer>
-      <feTurbulence baseFrequency="0.05 0.5" numOctaves="2"></feTurbulence>      
-      <feColorMatrix type="matrix" values=
-                          "0 0 0 0 0
+      <feTurbulence baseFrequency="0.05 0.5" numOctaves="2"></feTurbulence>
+      <feColorMatrix type="matrix" values="0 0 0 0 0
                            0 0 0 0 0
                            0 0 0 0 0
-                           0.3 0 0 0 0" result="a"/>
+                           0.3 0 0 0 0" result="a" />
       <feTurbulence type="turbulence" baseFrequency="0.01 0.01" numOctaves="3" result="NOISE"></feTurbulence>
-      <feDisplacementMap in="a" in2="NOISE" scale="50"/>
-      <feBlend in2="foo" mode="lighten"/>
+      <feDisplacementMap in="a" in2="NOISE" scale="50" />
+      <feBlend in2="foo" mode="lighten" />
     </filter>
   </defs>
+  <path stroke="rgba(255,255,255,0.5)" stroke-width="5" id="HighlightPath" />
   <path stroke="#f00" filter="url(#StringsFilter)" stroke-width="1.5" id="StringsPath" />
   <path stroke-dasharray="4" stroke="#f00" stroke-width="1" id="StringsWrongPath" />
 </svg>
@@ -418,7 +434,12 @@
 <div class="lamp" style="left:10%"></div>
 <div class="lamp" style="right:10%"></div>
 <div id="Talk">
-  <div id="Char"></div><div id="Speak"><p id="CST"></p><p id="CTC">Click to continue</p></div>
+  <div id="Char"></div>
+  <div id="Speak">
+    <p id="CST"></p>
+    <p id="CTC">Click to continue</p>
+  </div>
 </div>
+<input id="Input" type="text" id="seed"/>
 <div id="LevBtns"></div>
 <script src="./bundle.js"></script>

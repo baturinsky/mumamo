@@ -9,13 +9,17 @@ declare const
   Char: HTMLDivElement,
   Pins: HTMLDivElement,
   StringsPath: SVGPathElement,
-  StringsWrongPath: SVGPathElement;
+  StringsWrongPath: SVGPathElement,
+  HighlightPath: SVGPathElement,
+  Input: HTMLInputElement
 {
   type V2 = { x: number, y: number };
   const v2 = (x: number, y: number) => ({ x, y })
   const sum = (a: V2, b: V2) => ({ x: a.x + b.x, y: a.y + b.y })
   const sub = (a: V2, b: V2) => ({ x: a.x - b.x, y: a.y - b.y })
+  const dist = (a: V2, b: V2) => length(sub(a, b));
   const length = (a: V2) => (a.x ** 2 + a.y ** 2) ** 0.5;
+
 
   let levels = plot.split("=").map(s => s.trim().split("\n"));
   let seed;
@@ -24,6 +28,7 @@ declare const
   let leveln = 0;
   let maxLevel = 0;
   let win = false;
+  const FinalLevel = 5;
 
   const slots: HTMLDivElement[] = [];
   let cards: { [id: string]: Card } = {};
@@ -50,10 +55,9 @@ declare const
     update(ap: V2, bp: V2) {
       this.ap = ap;
       this.bp = bp;
-      this.length = length(sub(this.ap, this.bp));
+      this.length = this.a.slot != null && this.b.slot != null ? dist(idToCoord(this.a.slot), idToCoord(this.b.slot)) : 0;
       this.cp = v2(ap.x / 2 + bp.x / 2, ap.y / 2 + bp.y / 2 + Math.min(100, Math.abs(ap.x - bp.x) * 0.3));
     }
-
 
     curve(t: number) {
       let { ap, bp, cp } = this;
@@ -63,13 +67,16 @@ declare const
 
     toPath() {
       let { ap, bp, cp } = this;
-      let covered = this.checkIntersections()
-      return [covered, `M${ap.x} ${ap.y} Q${cp.x} ${cp.y} ${bp.x} ${bp.y}`];
+      let covered = this.overlapping()
+      return [covered, `M${ap.x} ${ap.y} Q${cp.x} ${cp.y} ${bp.x} ${bp.y}`, this] as [Card, string, Link];
     }
 
-    checkIntersections() {
+    overlapping() {
 
-      let steps = this.length / 10;
+      if (slotDistance(this.a.slot, this.b.slot) < 2)
+        return null;
+
+      let steps = this.length;
       for (let i = 1; i < steps - 1; i++) {
         let p = this.curve(i / steps);
         for (let c of allCards()) {
@@ -91,55 +98,63 @@ declare const
     constructor() {
     }
 
-    nextCard(slot?: number) {
-      let id: string, type: string;
-      if (slot != null && landmarkIn[slot] && rng(3) == 0) {
+    nextCard(slot?: number, type?: string) {
+      let id: string;
+      if (slot != null && landmarkIn[slot] && rng(3) == 0 || type == "lm") {
         id = landmarkIn[slot].icon;
         type = "lm";
       } else {
-        type = randomElement(["ev", "po", "np", "nt", "st"]);
+        type = type || randomElement(["ev", "po", "np", "nt", "st"]);
         id = (type == "ev" ? this.shuffledEvidence : this.shuffled).pop();
       }
       return { type, id };
     }
 
-    simpleCards(chance: number) {
+    simpleCards(chance: number, guaranteed?: number) {
       let cards = []
-      for (let slot = 0; slot < totalSlots; slot++) {
-        if (rng() < chance) {
-          let { type, id } = this.nextCard(slot);
-          if (id)
-            cards.push({ id, type, slot })
-        }
+      let slots = shuffle([...new Array(totalSlots)].map((_, i) => i), rng);
+      slots = slots.slice(0, ~~(totalSlots * chance));
+      if (guaranteed && !slots.includes(guaranteed))
+        slots.push(guaranteed);
+      slots = slots.sort();
+      for (let slot of slots) {
+        let { type, id } = this.nextCard(slot, slot == guaranteed && landmarkIn[slot] && "lm");
+        if (id)
+          cards.push({ id, type, slot })
       }
       return cards;
     }
 
-    neighborLinks(cards, linkChance) {
-      let b:string[] = [];
-      let links:[string, string][] = [];
-      for(let c of cards)
+    neighborLinks(cards: any[], linkChance: number, hub?: number) {
+      let b: string[] = [];
+      let links: [string, string][] = [];
+      for (let c of cards)
         b[c.slot] = c.id;
 
       for (let slot = 0; slot < totalSlots - columns; slot++) {
-        if(!b[slot])
+        if (!b[slot])
           continue;
-        if((slot+1)%columns==0)
+        if ((slot + 1) % columns == 0)
           continue;
-        if(rng()<linkChance && b[slot+1])
-          links.push([b[slot], b[slot+1]]);
-        if(rng()<linkChance && b[slot+columns])
-          links.push([b[slot], b[slot+columns]]);
-        if(rng()<linkChance && b[slot+columns+1])
-          links.push([b[slot], b[slot+columns+1]]);
-        if(slot%columns>0 && rng()<linkChance && b[slot+columns-1])
-          links.push([b[slot], b[slot+columns-1]]);
+        for (let other of [1, columns, 1 + columns]) {
+          if (b[slot] && b[slot + other] && other && (hub == slot || hub == slot + other))
+            links.push([b[slot], b[slot + other]]);
+        }
+
+        if (rng() < linkChance && b[slot + 1])
+          links.push([b[slot], b[slot + 1]]);
+        if (rng() < linkChance && b[slot + columns])
+          links.push([b[slot], b[slot + columns]]);
+        if (rng() < linkChance && b[slot + columns + 1])
+          links.push([b[slot], b[slot + columns + 1]]);
+        if (slot % columns > 0 && rng() < linkChance && b[slot + columns - 1])
+          links.push([b[slot], b[slot + columns - 1]]);
       }
       return links;
     }
 
-    randomLinks(cards:{id:string}[]){
-      let links:[string, string][] = [];
+    randomLinks(cards: { id: string }[]) {
+      let links: [string, string][] = [];
       for (let c1 of cards.map(c => c.id)) {
         let c2 = randomElement(cards).id;
         if (c1 != c2 && !links.find(l => l[0] == c1 && l[1] == c2 || l[1] == c1 && l[0] == c2)) {
@@ -154,19 +169,25 @@ declare const
       console.log({ seed: lseed });
       let density = Number(lseed.substring(1, 3)) / 100;
       let density2 = Number(lseed.substring(3, 5)) / 100;
+      let landmark = Number(lseed.substring(5, 7));
       let cards, links;
       switch (lseed[0]) {
         case "2":
           cards = this.simpleCards(density);
           links = this.neighborLinks(cards, density2);
-          //cards = shuffleSlots(cards);
+          cards = shuffleSlots(cards);
+          break;
+        case "3":
+          cards = this.simpleCards(density, landmark);
+          links = this.neighborLinks(cards, density2, landmark);
+          cards = shuffleSlots(cards);
           break;
         default:
           cards = this.simpleCards(density);
           links = this.randomLinks(cards);
           break;
       }
-  
+
       return { cards, links, seed: lseed };
     }
 
@@ -405,22 +426,22 @@ declare const
     return cc;
   }
 
-  //function connectedLinks(card: Card) {return links.filter(l => l.a == card || l.b == card)}
+  function connectedLinks(card: Card) { return links.filter(l => l.a == card || l.b == card) }
 
   function highlightNeighbors(cardDiv) {
     let card = cards[cardDiv?.id];
     for (let c of allCards())
-      if(c.slot)
+      if (c.slot)
         slots[c.slot].classList.remove("hl");
     if (card)
       for (let connected of connectedTo(card))
-        if(connected.slot)
+        if (connected.slot)
           slots[connected.slot].classList.add("hl")
-    //relink(connectedLinks);
+    relink(connectedLinks(card));
   }
 
 
-  function relink() {
+  function relink(highlighted: Link[] = []) {
     for (let c of allCards())
       c.recalculate();
 
@@ -432,20 +453,21 @@ declare const
 
     let path = links.map(l => l.toPath());
 
-    win = path.every(p=>!p[0]) && allCards().every(c=>c.slot !=null);    
+    win = (level < 5 || seed != "100") && path.every(p => !p[0]) && allCards().every(c => c.slot != null);
 
     StringsPath.setAttribute("d", path.filter(v => !v[0]).map(v => v[1]).join(" "));
     StringsWrongPath.setAttribute("d", path.filter(v => v[0]).map(v => v[1]).join(" "));
+    HighlightPath.setAttribute("d", path.filter(v => highlighted.includes(v[2])).map(v => v[1]).join(" "));
     savePosition();
     showLine();
   }
 
-  function shuffleSlots(cards:{slot:number, type:string}[]){
-    for(let card of cards){
-      if(card.type == "lm")
+  function shuffleSlots(cards: { slot: number, type: string }[]) {
+    for (let card of cards) {
+      if (card.type == "lm")
         continue;
       let other = randomElement(cards);
-      if(other.type == "lm")
+      if (other.type == "lm")
         continue;
       let s = other.slot;
       other.slot = card.slot;
@@ -453,7 +475,6 @@ declare const
     }
     return cards;
   }
-
 
   function initPosition(s: number) {
     RNG(s);
@@ -468,7 +489,7 @@ declare const
   function savePosition() {
     let data = {
       seed,
-      level,
+      leveln,
       line,
       maxLevel,
       cards: allCards().map(c => ({
@@ -479,7 +500,6 @@ declare const
       })),
       links: links.map(l => [l.a.id, l.b.id])
     }
-    console.log(data);
     localStorage.mumamo = JSON.stringify(data);
   }
 
@@ -491,10 +511,11 @@ declare const
       line = data.line;
     if (data.maxLevel != null)
       maxLevel = data.maxLevel;
-    if (data.level != null)
-      level = data.level;
+    if (data.leveln != null)
+      leveln = data.leveln;
     if (data.seed != null)
       seed = data.seed;
+    level = levels[leveln];
     for (let s of slots) {
       s.innerHTML = "";
     }
@@ -502,17 +523,31 @@ declare const
     console.log("R", data.seed, rng(10));
     for (let c of data.cards)
       new Card(c);
-    for (let l of data.links)
+    for (let l of removeDuplicateLinks(data.links))
       new Link(l[0], l[1]);
     relink();
+    Input.value = seed;
   }
 
 
-  window.onresize = relink;
+  window.onresize = () => relink();
   window.onkeydown = (e: KeyboardEvent) => {
-    console.log(e);
-    if(e.code.substring(0,5) == "Digit"){
-      playLevel(Number(e.key)-1);
+    if (e.target == Input) {
+      if(leveln != FinalLevel){
+        e.preventDefault();
+        return;      
+      }
+
+      setTimeout(() => {
+        Input.value = Input.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+        if(Input.value.length>=3){
+          initPosition(Number(Input.value));      
+        }
+      }, 1);
+    } else {
+      if (e.code.substring(0, 5) == "Digit") {
+        playLevel(Number(e.key) - 1);
+      }
     }
   }
 
@@ -521,23 +556,39 @@ declare const
     level = levels[n];
     line = 1;
     seed = Number(level[0]);
-    initPosition(seed);
-    showLine();
+    initPosition(seed);    
   }
 
   function showLine(increment = false) {
-    if(increment)
+    if (increment)
       line++;
     if (level[line] == "*")
       line++;
-    Char.innerText = line % 2 ? "🕵️" : "🕵️‍♀️";
-    CST.innerText = win?"Well done!":level[line];
+    Char.innerHTML = line % 2 ? "🕵️" : "🕵️‍♀️";
+    CST.innerHTML = win ? "<div class='WD'>Well done!</div>" : level[line];
     Talk.style.display = line >= level.length && !win ? "none" : "flex";
     savePosition();
+    Input.disabled = level == FinalLevel;
+    Input.style.border =  level == FinalLevel?"solid 1px black":"none";
   }
 
-  Talk.onclick = ()=>{
-    if(win && leveln < levels.length-1)
+  function removeDuplicateLinks(links: [string, string][]) {
+    let h = {};
+    for (let l of links)
+      h[l[0] + l[1]] = l;
+    return Object.values(h);
+  }
+
+  function idToCoord(id: number) {
+    return { x: id % columns, y: ~~(id / columns) }
+  }
+
+  function slotDistance(a: number, b: number) {
+    return dist(idToCoord(a), idToCoord(b));
+  }
+
+  Talk.onclick = () => {
+    if (win && leveln < levels.length - 1)
       playLevel(leveln + 1);
     else
       showLine(true);
@@ -551,5 +602,7 @@ declare const
   } else {
     playLevel(0);
   }
+
+
 
 }
