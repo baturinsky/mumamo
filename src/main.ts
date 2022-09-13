@@ -76,7 +76,7 @@ declare const
       if (slotDistance(this.a.slot, this.b.slot) < 2)
         return null;
 
-      let steps = this.length;
+      let steps = this.length*2;
       for (let i = 1; i < steps - 1; i++) {
         let p = this.curve(i / steps);
         for (let c of allCards()) {
@@ -167,9 +167,9 @@ declare const
     generate(lseed: string) {
       RNG(Number(lseed));
       console.log({ seed: lseed });
-      let density = Number(lseed.substring(1, 3)) / 100;
+      let density = Number(lseed.substring(1, 3)) / 100 || 0;
       let density2 = Number(lseed.substring(3, 5)) / 100;
-      let landmark = Number(lseed.substring(5, 7));
+      let landmark = Number(lseed[5])-1 + (Number(lseed[6])-1)*columns;
       let cards, links;
       switch (lseed[0]) {
         case "2":
@@ -504,6 +504,9 @@ declare const
   }
 
   function loadPosition(data) {
+    for(let c of allCards()){
+      c.div.remove();
+    }
     cards = {};
     links = [];
     board = [];
@@ -548,10 +551,16 @@ declare const
       if (e.code.substring(0, 5) == "Digit") {
         playLevel(Number(e.key) - 1);
       }
+      if(e.key == " "){
+        line = line==level.length?1:level.length;
+        showLine();
+      }      
     }
   }
 
   function playLevel(n) {
+    if(n>FinalLevel)
+      return;
     leveln = n;
     level = levels[n];
     line = 1;
@@ -568,8 +577,8 @@ declare const
     CST.innerHTML = win ? "<div class='WD'>Well done!</div>" : level[line];
     Talk.style.display = line >= level.length && !win ? "none" : "flex";
     savePosition();
-    Input.disabled = level == FinalLevel;
-    Input.style.border =  level == FinalLevel?"solid 1px black":"none";
+    Input.style.pointerEvents = leveln == FinalLevel?"all":"none";    
+    Input.style.border =  leveln == FinalLevel?"":"none";
   }
 
   function removeDuplicateLinks(links: [string, string][]) {
